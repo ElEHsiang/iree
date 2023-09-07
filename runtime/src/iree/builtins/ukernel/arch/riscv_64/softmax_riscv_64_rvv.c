@@ -173,7 +173,6 @@ void iree_uk_softmax_tile_riscv_64_f32_1d(
     //   TODO: Can't use math.h, no NaN & HUGE_VALF
 
     // Compute result.
-    int i = 0;
     for (current = 0, avl = N; avl; avl -= vl, current += vl) {
       // vl = ::rvv::type_info<vtype>::vsetvl(avl);
       vl = __riscv_vsetvl_e32m4(avl);

@@ -53,6 +53,7 @@ iree_cc_library(
 
 set(IREE_UK_RISCV_64_DEPS "")
 
+set(IREE_UK_RISCV_64_RVV)
 iree_cc_library(
   NAME
     riscv_64

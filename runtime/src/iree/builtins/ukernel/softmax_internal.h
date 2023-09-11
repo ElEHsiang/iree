@@ -10,7 +10,7 @@
 #include "iree/builtins/ukernel/softmax.h"
 
 typedef enum iree_uk_softmax_type_t {
-    iree_uk_softmax_type_f32 = IREE_UK_FLAG_SOFTMAX_TYPE_F32,
+    iree_uk_softmax_type_f32 = IREE_UK_TYPE_FLOAT_32,
 } iree_uk_softmax_type_t;
 
 static inline iree_uk_softmax_type_t iree_uk_softmax_type(

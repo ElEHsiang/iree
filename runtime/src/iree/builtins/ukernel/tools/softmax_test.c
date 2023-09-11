@@ -82,7 +82,7 @@ static void iree_uk_test_softmax(iree_uk_uint32_t flags, int M,
 
   char types_str[32];
   iree_uk_softmax_type_t softmax_type = iree_uk_softmax_type(flags);
-  iree_uk_type_pair_str(types_str, sizeof types_str, softmax_type);
+  iree_uk_type_str(types_str, sizeof types_str, softmax_type);
   char test_label_str[256];
   snprintf(test_label_str, sizeof test_label_str, "types:%s tile:%dx%d",
       types_str, M, N);

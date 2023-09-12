@@ -471,7 +471,7 @@ matchDAGForUKernel(RewriterBase &rewriter, IREE::LinalgExt::SoftmaxOp op,
   uint32_t flags = 0;
 
   if (!outputElemType.isF32()) {
-    return rewriter.notifyMatchFailure(op, "unsupported softmax type for ukernel");
+    return rewriter.notifyMatchFailure(op, "unsupported softmax data type for ukernel");
   }
   flags |= IREE_UK_FLAG_SOFTMAX_TYPE_F32;
 

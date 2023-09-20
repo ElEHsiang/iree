@@ -131,8 +131,7 @@ void iree_uk_softmax_tile_riscv_64_f32_1d(
     vfloat32m1_t v_sum_data = __riscv_vfmv_v_f_f32m1(0.0f, N);
     v_sum_data = __riscv_vfredusum_vs_f32m4_f32m1(v_add_data, v_sum_data, __riscv_vsetvl_e32m4(N));
 
-    // The reduce sum sclar is stored in v_sum_data[0], assign the value to sum
-    // scalar
+    // The reduce sum is stored in v_sum_data[0]
     const float sum = __riscv_vfmv_f_s_f32m1_f32(v_sum_data);
     float reciprocal_sum = 1.0 / sum;
 

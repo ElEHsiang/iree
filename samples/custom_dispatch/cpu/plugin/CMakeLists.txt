@@ -69,9 +69,9 @@ endif(IREE_HAL_EXECUTABLE_PLUGIN_SYSTEM_LIBRARY)
 # compiler/src/iree/compiler/Dialect/HAL/Target/LLVMCPU/internal/EmbeddedLinkerTool.cpp
 if(IREE_HAL_EXECUTABLE_PLUGIN_EMBEDDED_ELF)
 
-# This only builds for x86-64/arm_64 because that's all we have coded in here.
-if(NOT IREE_ARCH STREQUAL "arm_64" AND NOT IREE_ARCH STREQUAL "x86_64")
-  message(STATUS "IREE custom_dispatch/cpu/plugin standalone example ignored -- only builds for x86_64/arm_64 (today)")
+# This only builds for x86-64/arm_64/riscv_64 because that's all we have coded in here.
+if(NOT IREE_ARCH STREQUAL "arm_64" AND NOT IREE_ARCH STREQUAL "x86_64" AND NOT IREE_ARCH STREQUAL "riscv_64")
+  message(STATUS "IREE custom_dispatch/cpu/plugin standalone example ignored -- only builds for x86_64/arm_64/riscv_64 (today)")
   return()
 endif()
 
@@ -87,7 +87,7 @@ endif()
 # architecture (as in IREE_ARCH), and appends the generated library filename to
 # the output-variable _DST_VAR_ARCH_LIBRARIES. Skips if the compiler does not
 # support the specified architecture.
-function(standalone_plugin_library _DST_VAR_ARCH_LIBRARIES _ARCH)
+function(standalone_plugin_library _DST_VAR_ARCH_LIBRARIES _ARCH _CFLAGS _LDFLAGS)
   iree_compiler_targeting_iree_arch(_ENABLED "${_ARCH}")
   if(NOT _ENABLED)
     return()
@@ -113,6 +113,7 @@ function(standalone_plugin_library _DST_VAR_ARCH_LIBRARIES _ARCH)
       -fdata-sections
       -ffunction-sections
       -funique-section-names
+      ${_CFLAGS}
       -I ${IREE_SOURCE_DIR}/runtime/src/
       -c ${CMAKE_CURRENT_SOURCE_DIR}/standalone_plugin.c
       -o ${CMAKE_CURRENT_BINARY_DIR}/standalone_plugin_${_ARCH}.o
@@ -143,6 +144,7 @@ function(standalone_plugin_library _DST_VAR_ARCH_LIBRARIES _ARCH)
       --ignore-function-address-equality
       --hash-style=sysv
       --strip-debug
+      ${_LDFLAGS}
       ${CMAKE_CURRENT_BINARY_DIR}/standalone_plugin_${_ARCH}.o
       -o "${_LIBRARY}"
     VERBATIM
@@ -158,8 +160,10 @@ endfunction()
 # Build the standalone_plugin_*.so files for each architecture we target.
 set(_STANDALONE_PLUGIN_ARCH_LIBRARIES "")
 
-standalone_plugin_library(_STANDALONE_PLUGIN_ARCH_LIBRARIES arm_64)
-standalone_plugin_library(_STANDALONE_PLUGIN_ARCH_LIBRARIES x86_64)
+set(RISCV_STANDALONE_CFLAGS -march=rv64gcv_zba_zbb_zbs)
+standalone_plugin_library(_STANDALONE_PLUGIN_ARCH_LIBRARIES arm_64 "" "")
+standalone_plugin_library(_STANDALONE_PLUGIN_ARCH_LIBRARIES x86_64 "" "")
+standalone_plugin_library(_STANDALONE_PLUGIN_ARCH_LIBRARIES riscv_64 ${RISCV_STANDALONE_CFLAGS} "")
 
 add_custom_command(
   OUTPUT

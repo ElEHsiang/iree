@@ -73,6 +73,14 @@ def LLVMCPULowerExecutableTarget :
       "mlir::iree_compiler::createLLVMCPULowerExecutableTargetPass()";
 }
 
+def LLVMCPUSoftmaxToUKernel :
+    Pass<"iree-llvmcpu-softmax-to-ukernel", ""> {
+  let summary =
+      "Lower linalg.softmax to a ukernel";
+  let constructor =
+      "mlir::iree_compiler::createLLVMCPUSoftmaxToUKernelPass()";
+}
+
 def LLVMCPULowerToUKernels :
     Pass<"iree-llvmcpu-lower-to-ukernels", ""> {
   let summary =

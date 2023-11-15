@@ -13,6 +13,7 @@
 #define IREE_COMPILER_CODEGEN_LLVMCPU_PASSES_H_
 
 #include "iree/compiler/Codegen/Dialect/IREECodegenAttrs.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir::iree_compiler {
@@ -47,6 +48,9 @@ createLLVMCPULowerExecutableTargetPass();
 /// and then returing a f16 output back after preforming the operation.
 /// Can handel more operations if required in future.
 std::unique_ptr<Pass> createExpandF16OpToF32Pass();
+
+std::unique_ptr<OperationPass<>>
+createLLVMCPUSoftmaxToUKernelPass();
 
 std::unique_ptr<OperationPass<func::FuncOp>>
 createLLVMCPUMmt4dVectorLoweringPass();

@@ -74,6 +74,31 @@ static int simple_mul_workgroup(void* params_ptr, void* context,
   return 0;
 }
 
+// TODO(Yunh): replace simple_softmax by skl
+static int simple_softmax(void* params_ptr, void* context,
+                                void* reserved) {
+  typedef struct {
+    const float* restrict binding0;
+    size_t binding0_offset;
+    float* restrict binding1;
+    size_t binding1_offset;
+    const uint64_t* restrict processor_data;
+  } params_t;
+  const params_t* params = (const params_t*)params_ptr;
+  // The operation `iree_codegen.ukernel.generic` always operates
+  // on a slice of the inputs to produce a slice of the output,
+  // so the loop here just needs to iterate from `0` to `size`,
+  // where `size` is the size of the slice to be executed by this call.
+  for (size_t i = 0; i < 12 * 128 * 128; ++i) {
+    // The operation `iree_codegen.ukernel.generic` takes a slice of
+    // the inputs and outputs as operands. So the `pointer` and `offset`
+    // passed into this function represent the starting location of
+    // where to read the data from for this invocation of the function.
+    params->binding1[i] = 2;
+  }
+  return 0;
+}
+
 // Called once for each plugin load and paired with a future call to unload.
 // We don't do anything special here as this plugin is meant to represent a
 // pure/stateless kernel library. Even in standalone mode we could allocate
@@ -110,9 +135,12 @@ static iree_hal_executable_plugin_status_t standalone_plugin_resolve(
     bool is_optional =
         iree_hal_executable_plugin_import_is_optional(symbol_name);
     if (is_optional) ++symbol_name;
-    if (iree_hal_executable_plugin_strcmp(symbol_name,
-                                          "simple_mul_workgroup") == 0) {
+    if (iree_hal_executable_plugin_strcmp(symbol_name, "simple_mul_workgroup") == 0) {
       params->out_fn_ptrs[i] = simple_mul_workgroup;
+      params->out_fn_contexts[i] = NULL;  // no context used, could be self
+    } else if (iree_hal_executable_plugin_strcmp(symbol_name,
+                                          "iree_uk_softmax") == 0) {
+      params->out_fn_ptrs[i] = simple_softmax;
       params->out_fn_contexts[i] = NULL;  // no context used, could be self
     } else {
       if (is_optional) {

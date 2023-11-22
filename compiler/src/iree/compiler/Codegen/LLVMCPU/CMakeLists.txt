@@ -59,7 +59,7 @@ iree_cc_library(
     "LLVMCPULinkExecutables.cpp"
     "LLVMCPULowerExecutableTarget.cpp"
     "LLVMCPULowerToUKernels.cpp"
-    "LLVMCPUSoftmaxToUKernel.cpp"
+    "LLVMCPUCustomUKernel.cpp"
     "LLVMCPUMmt4dVectorLowering.cpp"
     "LLVMCPUPeel.cpp"
     "LLVMCPUSelectLoweringStrategy.cpp"

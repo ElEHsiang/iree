@@ -51,7 +51,7 @@ createLLVMCPULowerExecutableTargetPass();
 std::unique_ptr<Pass> createExpandF16OpToF32Pass();
 
 std::unique_ptr<OperationPass<>>
-createLLVMCPUSoftmaxToUKernelPass();
+createLLVMCPUCustomUKernelPass();
 
 /// Pass to lower a sequence of operations to a iree_codegen.ukernel.*
 /// operation.

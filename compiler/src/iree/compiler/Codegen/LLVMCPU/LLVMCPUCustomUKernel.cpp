@@ -7,9 +7,12 @@
 #include <iree/compiler/Codegen/Utils/Utils.h>
 #include "iree/compiler/Codegen/LLVMCPU/Passes.h"
 #include "iree/compiler/Codegen/Dialect/IREECodegenDialect.h"
+#include "iree/compiler/Codegen/Dialect/IREECodegenAttrs.h"
 #include "iree/compiler/Codegen/Dialect/UKernelOps.h"
 #include "iree/compiler/Codegen/LLVMCPU/PassDetail.h"
 #include "iree/compiler/Codegen/LLVMCPU/Utils.h"
+#include "iree/compiler/Codegen/LLVMCPU/Utils.h"
+#include "llvm/Support/Casting.h"
 #include "mlir-c/IR.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
@@ -17,16 +20,17 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/Support/LLVM.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 namespace mlir {
 namespace iree_compiler {
 
 namespace {
-class LLVMCPUSoftmaxToUKernelPass 
-    : public LLVMCPUSoftmaxToUKernelBase<LLVMCPUSoftmaxToUKernelPass> {
+class LLVMCPUCustomUKernelPass 
+    : public LLVMCPUCustomUKernelBase<LLVMCPUCustomUKernelPass> {
 public:
-  LLVMCPUSoftmaxToUKernelPass() {}
+  LLVMCPUCustomUKernelPass() {}
 
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<IREE::Codegen::IREECodegenDialect>();
@@ -64,15 +68,6 @@ getFnNameAndDefAttrs(const char *ukernelName, RewriterBase &rewriter,
     result.defAttrs.emplace_back(
         rewriter.getStringAttr("hal.import.fields"),
         rewriter.getArrayAttr({rewriter.getStringAttr("processor_data")}));
-    /*
-    result.defAttrs.emplace_back(rewriter.getStringAttr("hal.import.bitcode"),
-                                 rewriter.getBoolAttr(true));
-    result.defAttrs.emplace_back(
-        rewriter.getStringAttr("hal.import.cconv"),
-        IREE::HAL::CallingConventionAttr::get(
-            rewriter.getContext(),
-            IREE::HAL::CallingConvention::ParameterStruct));
-    */
   }
   return result;
 }
@@ -155,7 +150,7 @@ struct LowerToUKernelPattern : OpRewritePattern<OpType> {
 
 } // namespace
 
-void LLVMCPUSoftmaxToUKernelPass::runOnOperation() {
+void LLVMCPUCustomUKernelPass::runOnOperation() {
   MLIRContext *context = &getContext();
   RewritePatternSet patterns(context);
 
@@ -171,8 +166,8 @@ void LLVMCPUSoftmaxToUKernelPass::runOnOperation() {
 }
 
 std::unique_ptr<OperationPass<>>
-createLLVMCPUSoftmaxToUKernelPass() {
-  return std::make_unique<LLVMCPUSoftmaxToUKernelPass>();
+createLLVMCPUCustomUKernelPass() {
+  return std::make_unique<LLVMCPUCustomUKernelPass>();
 }
 } // namespace iree_compiler
 } // namespace mlir

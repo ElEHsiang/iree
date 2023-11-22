@@ -758,7 +758,6 @@ void buildLLVMCPUCodegenConfigurationPassPipeline(OpPassManager &passManager) {
   {
     addCommonTargetExecutablePreprocessingPasses(passManager);
     // TODO(Yun): Change this pass to customized lower to ukernel 
-    passManager.addPass(createLLVMCPUSoftmaxToUKernelPass());
 
 
     OpPassManager &modulePassManager = passManager.nest<ModuleOp>();
@@ -776,6 +775,8 @@ void buildLLVMCPUCodegenConfigurationPassPipeline(OpPassManager &passManager) {
   }
 
   passManager.addPass(createLLVMCPUSelectLoweringStrategyPass());
+// move to here
+passManager.addPass(createLLVMCPUCustomUKernelPass());
 }
 
 void buildLLVMCPUCodegenPassPipeline(OpPassManager &passManager) {

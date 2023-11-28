@@ -26,6 +26,7 @@
 #include <float.h>
 #include <riscv_vector.h>
 
+#include "layernorm_uk.h"
 #endif /* ifdef __riscv */
 
 // `ret = lhs * rhs`
@@ -80,6 +81,34 @@ static int simple_mul_workgroup(void* params_ptr, void* context,
   }
   return 0;
 }
+
+#if __riscv
+static int layernorm_uk(void* params_ptr, void* context,
+                                void* reserved) {
+  typedef struct {
+    const float* restrict input;
+    size_t input_offset;
+    size_t input_stride0;
+    const float* restrict gamma;
+    size_t gamma_offset;
+    size_t gamma_stride0;
+    const float* restrict beta;
+    size_t beta_offset;
+    size_t beta_stride0;
+    const float epsilon;
+    float* restrict output;
+    size_t output_offset;
+    size_t output_stride0;
+    size_t row_count;
+    const uint64_t* restrict processor_data;
+  } params_t;
+  const params_t* params = (const params_t*)params_ptr;
+  for (int i = 0; i < params->row_count; i++) {
+    LayerNorm1D(params->input, params->gamma, params->beta, params->output, params->epsilon, params->output_stride0);
+  }
+  return 0;
+}
+#endif /* ifdef __riscv */
 
 #if __riscv
 
@@ -307,6 +336,12 @@ static iree_hal_executable_plugin_status_t standalone_plugin_resolve(
                                           "iree_uk_softmax") == 0) {
 #ifdef __riscv
       params->out_fn_ptrs[i] = softmax_skl_ukernel;
+      params->out_fn_contexts[i] = NULL;  // no context used, could be self
+#endif /* ifdef __riscv */
+    } else if (iree_hal_executable_plugin_strcmp(symbol_name,
+                                          "layernorm_uk") == 0) {
+#ifdef __riscv
+      params->out_fn_ptrs[i] = layernorm_uk;
       params->out_fn_contexts[i] = NULL;  // no context used, could be self
 #endif /* ifdef __riscv */
     } else {

@@ -104,7 +104,12 @@ static int layernorm_uk(void* params_ptr, void* context,
   } params_t;
   const params_t* params = (const params_t*)params_ptr;
   for (int i = 0; i < params->row_count; i++) {
-    LayerNorm1D(params->input, params->gamma, params->beta, params->output, params->epsilon, params->output_stride0);
+    LayerNorm1D(params->input + params->input_offset + i * params->input_stride0,
+                params->gamma + params->gamma_offset + i * params->gamma_stride0,
+                params->beta,
+                params->output + params->output_offset + i * params->output_stride0,
+                params->epsilon,
+                params->output_stride0);
   }
   return 0;
 }

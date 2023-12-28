@@ -5,6 +5,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include "iree/compiler/Codegen/Interfaces/PartitionableLoopsInterface.h"
+#include <iree/compiler/Codegen/Dialect/IREECodegenDialect.h>
+#include <iree/compiler/Codegen/Dialect/VendorKernelOps.h>
 
 #include "iree-dialects/Dialect/LinalgExt/IR/LinalgExtDialect.h"
 #include "iree-dialects/Dialect/LinalgExt/IR/LinalgExtOps.h"
@@ -12,9 +14,11 @@
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "iree/compiler/Codegen/Dialect/IREECodegenOps.h"
 
 // clang-format off
 #include "iree/compiler/Codegen/Interfaces/PartitionableLoopsInterface.cpp.inc"  // IWYU pragma: export
+#include "mlir/IR/MLIRContext.h"
 // clang-format on
 
 namespace mlir::iree_compiler {
@@ -231,6 +235,10 @@ void registerPartitionableLoopsInterfaceModels(DialectRegistry &registry) {
   });
 
   registry.insert<IREE::LinalgExt::IREELinalgExtDialect>();
+
+    registry.addExtension(+[](MLIRContext *ctx, IREE::Codegen::IREECodegenDialect *dialect) {
+        IREE::Codegen::VendorKernelSoftmaxOp::attachInterface<OuterParallelAsPartitionableLoops<IREE::Codegen::VendorKernelSoftmaxOp>>(*ctx);
+    });
 
   registry.addExtension(+[](MLIRContext *ctx,
                             IREE::LinalgExt::IREELinalgExtDialect *dialect) {

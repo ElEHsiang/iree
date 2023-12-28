@@ -24,6 +24,7 @@
 namespace mlir::iree_compiler {
 
 void registerUKernelBufferizationInterface(DialectRegistry &registry);
+void registerVendorKernelBufferizationInterface(DialectRegistry &registry);
 
 } // namespace mlir::iree_compiler
 

@@ -18,6 +18,7 @@ iree_cc_library(
     "IREECodegenDialect.h"
     "IREECodegenOps.h"
     "UKernelOps.h"
+    "VendorKernelOps.h"
   TEXTUAL_HDRS
     "IREECodegenAttrs.cpp.inc"
     "IREECodegenAttrs.h.inc"
@@ -29,17 +30,21 @@ iree_cc_library(
     "LoweringConfigEnums.h.inc"
     "UKernelOps.cpp.inc"
     "UKernelOps.h.inc"
+    "VendorKernelOps.cpp.inc"
+    "VendorKernelOps.h.inc"
   SRCS
     "IREECodegenAttrs.cpp"
     "IREECodegenDialect.cpp"
     "IREECodegenLibraryManager.cpp"
     "IREECodegenOps.cpp"
     "UKernelOps.cpp"
+    "VendorKernelOps.cpp"
   DEPS
     ::IREECodegenDialectGen
     ::IREECodegenOpsGen
     ::LoweringConfigGen
     ::UKernelOpsGen
+    ::VendorKernelOpsGen
     LLVMSupport
     MLIRArithDialect
     MLIRBufferizationDialect
@@ -99,4 +104,13 @@ iree_tablegen_library(
     --gen-op-defs UKernelOps.cpp.inc
 )
 
+iree_tablegen_library(
+  NAME
+    VendorKernelOpsGen
+  TD_FILE
+    "VendorKernelOps.td"
+  OUTS
+    --gen-op-decls VendorKernelOps.h.inc
+    --gen-op-defs VendorKernelOps.cpp.inc
+)
 ### BAZEL_TO_CMAKE_PRESERVES_ALL_CONTENT_BELOW_THIS_LINE ###

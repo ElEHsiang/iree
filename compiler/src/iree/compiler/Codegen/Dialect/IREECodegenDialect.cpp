@@ -10,6 +10,7 @@
 #include "iree/compiler/Codegen/Dialect/IREECodegenDialect.cpp.inc"
 #include "iree/compiler/Codegen/Dialect/IREECodegenOps.h"
 #include "iree/compiler/Codegen/Dialect/UKernelOps.h"
+#include "iree/compiler/Codegen/Dialect/VendorKernelOps.h"
 #include "mlir/IR/DialectImplementation.h"
 
 namespace mlir::iree_compiler::IREE::Codegen {
@@ -42,6 +43,10 @@ void IREECodegenDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
 #include "iree/compiler/Codegen/Dialect/UKernelOps.cpp.inc"
+      >();
+  addOperations<
+#define GET_OP_LIST
+#include "iree/compiler/Codegen/Dialect/VendorKernelOps.cpp.inc"
       >();
 }
 

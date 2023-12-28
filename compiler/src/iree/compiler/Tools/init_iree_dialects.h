@@ -59,6 +59,7 @@ inline void registerIreeDialects(DialectRegistry &registry) {
   registerCodegenInterfaces(registry);
   registerGlobalOptimizationInterfaces(registry);
   registerUKernelBufferizationInterface(registry);
+  registerVendorKernelBufferizationInterface(registry);
 }
 
 } // namespace mlir::iree_compiler

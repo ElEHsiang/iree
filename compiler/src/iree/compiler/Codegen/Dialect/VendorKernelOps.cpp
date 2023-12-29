@@ -24,6 +24,40 @@
 
 namespace mlir::iree_compiler::IREE::Codegen {
 
+/// Return a `memref.dim` or `tensor.dim` for the shape of `v` at `dim`.
+static OpFoldResult getDimValue(OpBuilder &builder, Location loc, Value v,
+                                int64_t dim) {
+  auto type = cast<ShapedType>(v.getType());
+  if (!type.isDynamicDim(dim))
+    return builder.getIndexAttr(type.getDimSize(dim));
+
+  return getAsOpFoldResult(
+      TypeSwitch<Type, Value>(v.getType())
+          .Case<RankedTensorType>([&](RankedTensorType t) -> Value {
+            return builder.create<tensor::DimOp>(loc, v, dim);
+          })
+          .Case<MemRefType>([&](MemRefType t) -> Value {
+            return builder.create<memref::DimOp>(loc, v, dim);
+          }));
+}
+
+/// Returns a memref.subview or a tensor.extract_slice based on the type of the
+/// `source`.
+static Value getSlice(OpBuilder &b, Location loc, Value source,
+                      ArrayRef<OpFoldResult> offsets,
+                      ArrayRef<OpFoldResult> sizes,
+                      ArrayRef<OpFoldResult> strides) {
+  return TypeSwitch<Type, Value>(source.getType())
+      .Case<RankedTensorType>([&](RankedTensorType t) -> Value {
+        return b.create<tensor::ExtractSliceOp>(loc, source, offsets, sizes,
+                                                strides);
+      })
+      .Case<MemRefType>([&](MemRefType type) -> Value {
+        return b.create<memref::SubViewOp>(loc, source, offsets, sizes,
+                                           strides);
+      })
+      .Default([&](Type t) { return nullptr; });
+}
 //===---------------------------------------------------------------------===//
 // Helpers
 //===---------------------------------------------------------------------===//
@@ -65,7 +99,7 @@ createFunctionCall(RewriterBase &rewriter, Operation *op, StringRef fnName,
 }
 
 //===---------------------------------------------------------------------===//
-// VendorKernelSoftmaxOp
+// VendorKernelOp
 //===---------------------------------------------------------------------===//
 
 /// Map type of operand of a `iree_codegen.vendorkernel.softmax` operation to
@@ -129,6 +163,12 @@ static LogicalResult lowerToCallOperands(Location loc, RewriterBase &rewriter,
       .Default([](Type) { return failure(); });
 }
 
+//===---------------------------------------------------------------------===//
+// VendorKernelSoftmaxOp
+//===---------------------------------------------------------------------===//
+
+// These functions should be use in a general interface for all VendorKernel*Op
+// TODO: Extract the "lower to function call" to a general function
 static FailureOr<func::CallOp> lowerVendorKernelSoftmaxToFunctionCall(
     RewriterBase &rewriter, IREE::Codegen::VendorKernelSoftmaxOp op,
     StringRef fnName, IntegerAttr stridedOuterDimsAttr) {
@@ -180,6 +220,62 @@ FailureOr<func::CallOp>
 VendorKernelSoftmaxOp::lowerToFunctionCall(RewriterBase &rewriter) {
   return lowerVendorKernelSoftmaxToFunctionCall(rewriter, *this, getUKernelFnName(),
                                            getStridedOuterDimsAttr());
+}
+
+SmallVector<Range> VendorKernelSoftmaxOp::getIterationDomain(OpBuilder &builder) {
+  int64_t operandRank = getInputOperandRank();
+  SmallVector<Range> loopBounds(operandRank);
+  Location loc = getLoc();
+  Value zero = builder.create<arith::ConstantIndexOp>(loc, 0);
+  Value one = builder.create<arith::ConstantIndexOp>(loc, 1);
+  Value source = getInput();
+  for (auto dim : llvm::seq<int64_t>(0, operandRank)) {
+    loopBounds[dim].offset = zero;
+    loopBounds[dim].size = getDimValue(builder, loc, source, dim);
+    loopBounds[dim].stride = one;
+  }
+  return loopBounds;
+}
+
+SmallVector<utils::IteratorType> VendorKernelSoftmaxOp::getLoopIteratorTypes() {
+  SmallVector<utils::IteratorType> iteratorTypes(getInputOperandRank(),
+                                                 utils::IteratorType::parallel);
+  iteratorTypes[getInputOperandRank() - 1] = utils::IteratorType::reduction;
+  return iteratorTypes;
+}
+
+FailureOr<TilingResult>
+VendorKernelSoftmaxOp::getTiledImplementation(OpBuilder &builder,
+                                  ArrayRef<OpFoldResult> offsets,
+                                  ArrayRef<OpFoldResult> sizes) {
+  int64_t rank = getInputOperandRank();
+  auto oneAttr = builder.getI64IntegerAttr(1);
+  SmallVector<OpFoldResult> strides(rank, oneAttr);
+  SmallVector<Value> tiledOperands;
+  tiledOperands.emplace_back(
+      getSlice(builder, getLoc(), getInput(), offsets, sizes, strides));
+  tiledOperands.emplace_back(
+      getSlice(builder, getLoc(), getOutput(), offsets, sizes, strides));
+
+  SmallVector<Type, 4> resultTypes;
+  if (hasTensorSemantics())
+    resultTypes.push_back(tiledOperands[1].getType());
+  Operation *tiledOp =
+      mlir::clone(builder, getOperation(), resultTypes, tiledOperands);
+
+  return TilingResult{{tiledOp}, SmallVector<Value>(tiledOp->getResults())};
+}
+
+LogicalResult VendorKernelSoftmaxOp::getResultTilePosition(
+    OpBuilder &builder, unsigned resultNumber, ArrayRef<OpFoldResult> offsets,
+    ArrayRef<OpFoldResult> sizes, SmallVector<OpFoldResult> &resultOffsets,
+    SmallVector<OpFoldResult> &resultSizes) {
+  if (resultNumber == 0) {
+    resultOffsets.assign(offsets.begin(), offsets.end());
+    resultSizes.assign(sizes.begin(), sizes.end());
+    return success();
+  }
+  return failure();
 }
 
 } // namespace mlir::iree_compiler::IREE::Codegen

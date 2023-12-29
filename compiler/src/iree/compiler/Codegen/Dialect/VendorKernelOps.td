@@ -10,12 +10,18 @@
 include "iree/compiler/Codegen/Dialect/IREECodegenDialect.td"
 include "iree/compiler/Codegen/Interfaces/UKernelOpInterface.td"
 include "mlir/Interfaces/DestinationStyleOpInterface.td"
+include "mlir/Interfaces/TilingInterface.td"
 
 class IREECodegen_VendorKernelOp<string mnemonic, list<Trait> traits = []> : 
   Op<IREECodegen_Dialect, mnemonic, !listconcat(traits,
     [DeclareOpInterfaceMethods<UKernelOpInterface,
         ["lowerToFunctionCall"]>,
-     DeclareOpInterfaceMethods<DestinationStyleOpInterface>])> {}
+     DeclareOpInterfaceMethods<DestinationStyleOpInterface>,
+     DeclareOpInterfaceMethods<TilingInterface,
+     ["getIterationDomain",
+      "getLoopIteratorTypes",
+      "getResultTilePosition",
+      "getTiledImplementation"]>])> {}
   
 def IREECodegen_VendorKernelSoftmaxOp :
     IREECodegen_VendorKernelOp<"vendorkernel.softmax", [
@@ -41,6 +47,28 @@ def IREECodegen_VendorKernelSoftmaxOp :
     (`(` $other_operands^ `:` type($other_operands) `)`)?
     ( `fn_def_attrs` $fn_def_attrs^ )?
     (`strided_outer_dims` `(` $strided_outer_dims^ `)`)? (`->` type($results)^)?
+  }];
+  let extraClassDeclaration = [{
+    Value getInput() {
+      return (*getODSOperands(0).begin());
+    }
+
+    Value getOutput() {
+      return (*getODSOperands(1).begin());
+    }
+
+    ShapedType getInputOperandType() {
+      return getInput().getType().cast<ShapedType>();
+    }
+    ShapedType getOutputOperandType() {
+      return getOutput().getType().cast<ShapedType>();
+    }
+    int64_t getInputOperandRank() {
+      return getInputOperandType().getRank();
+    }
+    int64_t getOutputOperandRank() {
+      return getOutputOperandType().getRank();
+    }
   }];
 }
 

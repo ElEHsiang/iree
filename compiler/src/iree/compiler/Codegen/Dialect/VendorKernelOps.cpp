@@ -15,7 +15,6 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/IR/OpImplementation.h"
-#include "mlir/Support/LLVM.h"
 
 // clang-format off
 #define GET_OP_CLASSES
@@ -252,10 +251,16 @@ VendorKernelSoftmaxOp::getTiledImplementation(OpBuilder &builder,
   auto oneAttr = builder.getI64IntegerAttr(1);
   SmallVector<OpFoldResult> strides(rank, oneAttr);
   SmallVector<Value> tiledOperands;
+
   tiledOperands.emplace_back(
       getSlice(builder, getLoc(), getInput(), offsets, sizes, strides));
   tiledOperands.emplace_back(
       getSlice(builder, getLoc(), getOutput(), offsets, sizes, strides));
+  // FIXME(yun): It should check the attribute "(%size: index)" exists.
+  auto softmaxOp = dyn_cast<VendorKernelSoftmaxOp>(getOperation());
+  Value otherOperand = *softmaxOp.getOtherOperands().begin();
+
+  tiledOperands.push_back(otherOperand);
 
   SmallVector<Type, 4> resultTypes;
   if (hasTensorSemantics())

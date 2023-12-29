@@ -4,6 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+#include <iree/compiler/Codegen/Dialect/VendorKernelOps.h>
 #include <deque>
 
 #include "iree/compiler/Codegen/Common/Transforms.h"
@@ -417,6 +418,13 @@ tileDispatchUsingSCFFopOp(RewriterBase &rewriter, TilingInterface op,
           tilingResult.tiledValues, body))) {
     return failure();
   }
+
+  auto baseOp = op.getOperation();
+  auto vendorKernelOp = dyn_cast<IREE::Codegen::VendorKernelSoftmaxOp>(baseOp);
+  if (vendorKernelOp) {
+    rewriter.eraseOp(op);
+  }
+
   return tilingResult;
 }
 

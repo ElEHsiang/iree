@@ -450,16 +450,11 @@ void TileAndDistributeToWorkgroupsPass::runOnOperation() {
         auto vkSoftmaxOp = dyn_cast<IREE::Codegen::VendorKernelSoftmaxOp>(ukOp);
         auto outType = vkSoftmaxOp.getOutputOperandType();
         int64_t rank = outType.getRank();
-        int64_t rows = 1;
-        int64_t size = outType.getDimSize(rank - 1);
 
-        for (int i = 0; i < rank - 1; i++) {
-          rows *= outType.getDimSize(i);
+        for (int i = 0; i < rank; i++) {
+          auto dimOp = rewriter.create<arith::ConstantIndexOp>(vkSoftmaxOp.getLoc(), outType.getDimSize(i));
+          vkSoftmaxOp.setOperand(2 + i, dimOp.getResult());
         }
-        auto rowsOp = rewriter.create<arith::ConstantIndexOp>(vkSoftmaxOp.getLoc(), rows);
-        auto sizeOp = rewriter.create<arith::ConstantIndexOp>(vkSoftmaxOp.getLoc(), size);
-        vkSoftmaxOp.setOperand(2, rowsOp.getResult());
-        vkSoftmaxOp.setOperand(3, sizeOp.getResult());
       }
     }
 

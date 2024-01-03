@@ -4,6 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+#include <iree/compiler/Codegen/Dialect/VendorKernelOps.h>
 #include <iree/compiler/Codegen/Utils/Utils.h>
 #include "iree/compiler/Codegen/LLVMCPU/Passes.h"
 #include "iree/compiler/Codegen/Dialect/IREECodegenDialect.h"
@@ -11,16 +12,40 @@
 #include "iree/compiler/Codegen/LLVMCPU/PassDetail.h"
 #include "iree/compiler/Codegen/LLVMCPU/Utils.h"
 #include "mlir-c/IR.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/Value.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 namespace mlir {
 namespace iree_compiler {
+
+static std::optional<CastOpInterface>
+getCastOpOfElementWiseCast(linalg::GenericOp genericOp) {
+  if (!genericOp || genericOp.getNumDpsInputs() != 1 ||
+      genericOp.getNumDpsInits() != 1 ||
+      genericOp.getBody()->getOperations().size() != 2 ||
+      !isElementwise(genericOp)) {
+    return std::nullopt;
+  }
+
+  auto yieldOp = cast<linalg::YieldOp>(genericOp.getBody()->getTerminator());
+  auto castOp = yieldOp->getOperand(0).getDefiningOp<CastOpInterface>();
+  if (!castOp) {
+    return std::nullopt;
+  }
+  Value castIn = castOp->getOperand(0);
+  if(castIn.isa<BlockArgument>() &&
+     castIn.cast<BlockArgument>().getArgNumber() != 0) {
+    return std::nullopt;
+  }
+  return castOp;
+}
 
 namespace {
 class LLVMCPUSoftmaxToUKernelPass 
@@ -117,18 +142,23 @@ matchDAGForUKernel(RewriterBase &rewriter, linalg::SoftmaxOp op) {
   Value lhs = getInputForUKernel(op.getDpsInputOperand(0)->get());
   Value out = op.getDpsInitOperand(0)->get();
   auto outType = llvm::cast<ShapedType>(out.getType());
-  uint32_t flags = 0;
+  int64_t rank = outType.getRank();
+  int64_t rows = 1;
+
+  for (int i = 0; i < rank - 1; i++) {
+    rows *= outType.getDimSize(i);
+  }
 
   Location loc = op.getLoc();
 
-  Value flagsVal = rewriter.create<arith::ConstantOp>(
-      loc, rewriter.getI32IntegerAttr(flags));
+  Value rowsOp = rewriter.create<arith::ConstantIndexOp>(
+      loc, rows);
   auto fn = getFnNameAndDefAttrs(ukernelName, rewriter, targetAttr);
-  auto genericMicroKernelOp = rewriter.create<IREE::Codegen::UKernelGenericOp>(
+  auto genericMicroKernelOp = rewriter.create<IREE::Codegen::VendorKernelSoftmaxOp>(
       loc, outType, fn.name, ValueRange{lhs}, out,
-      ValueRange{flagsVal},
+      ValueRange{rowsOp},
       /*fn_def_attrs=*/rewriter.getDictionaryAttr(fn.defAttrs),
-      /*strided_outer_dims=*/rewriter.getIndexAttr(0));
+      /*strided_outer_dims=*/rewriter.getIndexAttr(1));
   return cast<IREE::Codegen::UKernelOpInterface>(
       genericMicroKernelOp.getOperation());
 }
@@ -142,6 +172,7 @@ struct LowerToUKernelPattern : OpRewritePattern<OpType> {
 
   LogicalResult matchAndRewrite(OpType op,
                                 PatternRewriter &rewriter) const override {
+
     FailureOr<IREE::Codegen::UKernelOpInterface> ukernelOp =
         matchDAGForUKernel(rewriter, op);
     if (failed(ukernelOp)) {
@@ -159,7 +190,7 @@ void LLVMCPUSoftmaxToUKernelPass::runOnOperation() {
   MLIRContext *context = &getContext();
   RewritePatternSet patterns(context);
 
-  // Add isRISCV condition, it need the executableTargetOp
+  // TODO(yunh): Add isRISCV condition, it need the executableTargetOp
   patterns.insert<LowerToUKernelPattern<linalg::SoftmaxOp>>(
     context
   );

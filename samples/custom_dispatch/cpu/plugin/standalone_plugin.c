@@ -248,14 +248,17 @@ static int softmax_skl_ukernel(void* params_ptr, void* context,
     size_t binding1_offset;
     size_t binding1_stride0;
     size_t row;
+    size_t size;
+    const uint64_t* restrict processor_data;
   } params_t;
   const params_t* params = (const params_t*)params_ptr;
-  // The operation `iree_codegen.ukernel.generic` always operates
+  // The operation `iree_codegen.vendorkernel.softmax` always operates
   // on a slice of the inputs to produce a slice of the output,
   // so the loop here just needs to iterate from `0` to `size`,
   // where `size` is the size of the slice to be executed by this call.
-  size_t size = params->binding1_stride0;
+  size_t size = params->size;
   size_t row = params->row;
+
   for (size_t i = 0; i < row; ++i) {
     // The operation `iree_codegen.ukernel.generic` takes a slice of
     // the inputs and outputs as operands. So the `pointer` and `offset`
@@ -310,7 +313,7 @@ static iree_hal_executable_plugin_status_t standalone_plugin_resolve(
       params->out_fn_ptrs[i] = simple_mul_workgroup;
       params->out_fn_contexts[i] = NULL;  // no context used, could be self
     } else if (iree_hal_executable_plugin_strcmp(symbol_name,
-                                          "softmax") == 0) {
+                                          "iree_uk_softmax") == 0) {
 #ifdef __riscv
       params->out_fn_ptrs[i] = softmax_skl_ukernel;
       params->out_fn_contexts[i] = NULL;  // no context used, could be self

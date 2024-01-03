@@ -144,6 +144,7 @@ matchDAGForUKernel(RewriterBase &rewriter, linalg::SoftmaxOp op) {
   auto outType = llvm::cast<ShapedType>(out.getType());
   int64_t rank = outType.getRank();
   int64_t rows = 1;
+  int64_t size = outType.getDimSize(rank - 1);
 
   for (int i = 0; i < rank - 1; i++) {
     rows *= outType.getDimSize(i);
@@ -153,10 +154,12 @@ matchDAGForUKernel(RewriterBase &rewriter, linalg::SoftmaxOp op) {
 
   Value rowsOp = rewriter.create<arith::ConstantIndexOp>(
       loc, rows);
+  Value sizeOp = rewriter.create<arith::ConstantIndexOp>(
+      loc, size);
   auto fn = getFnNameAndDefAttrs(ukernelName, rewriter, targetAttr);
   auto genericMicroKernelOp = rewriter.create<IREE::Codegen::VendorKernelSoftmaxOp>(
       loc, outType, fn.name, ValueRange{lhs}, out,
-      ValueRange{rowsOp},
+      ValueRange{rowsOp, sizeOp},
       /*fn_def_attrs=*/rewriter.getDictionaryAttr(fn.defAttrs),
       /*strided_outer_dims=*/rewriter.getIndexAttr(1));
   return cast<IREE::Codegen::UKernelOpInterface>(

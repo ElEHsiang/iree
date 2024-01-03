@@ -14,6 +14,7 @@
 //
 //===---------------------------------------------------------------------===//
 
+#include <iree/compiler/Codegen/Dialect/VendorKernelOps.h>
 #include "iree-dialects/Dialect/LinalgExt/IR/LinalgExtDialect.h"
 #include "iree-dialects/Dialect/LinalgExt/IR/LinalgExtOps.h"
 #include "iree/compiler/Codegen/Common/EncodingUtils.h"
@@ -28,6 +29,7 @@
 #include "iree/compiler/Dialect/HAL/IR/HALDialect.h"
 #include "iree/compiler/Dialect/HAL/IR/HALOps.h"
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "mlir/Analysis/SliceAnalysis.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -39,6 +41,7 @@
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/Pass/Pass.h"
+#include "mlir/Support/LLVM.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #define DEBUG_TYPE "iree-codegen-tile-and-distribute-to-workgroups"
@@ -437,6 +440,21 @@ void TileAndDistributeToWorkgroupsPass::runOnOperation() {
       funcOp.print(llvm::dbgs(), OpPrintingFlags().useLocalScope());
       llvm::dbgs() << "\n\n";
     });
+
+    // TODO(yunh): change this to deal with general VendorKenrelOp
+    // Fixup for vendor kernel operations size
+    SmallVector<Operation *> ukOps = getUKernelOps(funcOp);
+    for (auto ukOp : ukOps) {
+      rewriter.setInsertionPointToStart(ukOp->getBlock());
+      if (dyn_cast<IREE::Codegen::VendorKernelSoftmaxOp>(ukOp)) {
+        auto vkSoftmaxOp = dyn_cast<IREE::Codegen::VendorKernelSoftmaxOp>(ukOp);
+        auto outputType = vkSoftmaxOp.getOutputOperandType();
+        int64_t size = outputType.getDimSize(0);
+        auto valOp = rewriter.create<arith::ConstantIndexOp>(vkSoftmaxOp.getLoc(), size);
+        valOp->dump();
+        vkSoftmaxOp.setOperand(2, valOp.getResult());
+      }
+    }
 
     // After rewriting destructive updates, there might be uses of compute
     // operations only in `tensor.dim` ops. Resolve these.

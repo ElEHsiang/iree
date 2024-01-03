@@ -166,6 +166,7 @@ struct LoopTilingAndDistributionInfo {
 /// `scf.for` operations in the function return the TilingInterface operations
 /// in the body of the function if it has a single basic block.
 SmallVector<Operation *> getComputeOps(func::FuncOp funcOp);
+SmallVector<Operation *> getUKernelOps(func::FuncOp funcOp);
 
 /// If the given `forOp` is a tiled and distributed loop, returns its tiling and
 /// distribution information.

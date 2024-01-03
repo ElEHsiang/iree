@@ -637,6 +637,16 @@ SmallVector<Operation *> getComputeOps(func::FuncOp funcOp) {
   return computeOps;
 }
 
+SmallVector<Operation *> getUKernelOps(func::FuncOp funcOp) {
+  SmallVector<Operation *> computeOps;
+  funcOp.walk([&](Operation *op) {
+    if (isa<IREE::Codegen::UKernelOpInterface>(op)) {
+      computeOps.push_back(op);
+    }
+  });
+  return computeOps;
+}
+
 SmallVector<LoopTilingAndDistributionInfo>
 getTiledAndDistributedLoopInfo(func::FuncOp funcOp) {
   SmallVector<LoopTilingAndDistributionInfo> info;

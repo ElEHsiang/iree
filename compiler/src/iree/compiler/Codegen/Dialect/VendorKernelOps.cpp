@@ -258,9 +258,11 @@ VendorKernelSoftmaxOp::getTiledImplementation(OpBuilder &builder,
       getSlice(builder, getLoc(), getOutput(), offsets, sizes, strides));
   // FIXME(yun): It should check the attribute "(%size: index)" exists.
   auto softmaxOp = dyn_cast<VendorKernelSoftmaxOp>(getOperation());
-  Value otherOperand = *softmaxOp.getOtherOperands().begin();
+  auto otherOperands = softmaxOp.getOtherOperands();
 
-  tiledOperands.push_back(otherOperand);
+  for (auto op : otherOperands) {
+    tiledOperands.push_back(op);
+  }
 
   SmallVector<Type, 4> resultTypes;
   if (hasTensorSemantics())

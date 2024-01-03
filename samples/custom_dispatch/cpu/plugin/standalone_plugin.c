@@ -74,6 +74,39 @@ static int simple_mul_workgroup(void* params_ptr, void* context,
   return 0;
 }
 
+static int test_softmax(void* params_ptr, void* context,
+                                void* reserved) {
+  typedef struct {
+    const float* restrict binding0;
+    size_t binding0_offset;
+    size_t binding0_stride0;
+    size_t binding0_stride1;
+    float* restrict binding1;
+    size_t binding1_offset;
+    size_t binding1_stride0;
+    size_t binding1_stride1;
+    size_t M;
+    size_t N;
+    size_t size;
+    uint32_t processor_id;
+  } params_t;
+  const params_t* params = (const params_t*)params_ptr;
+
+  size_t M = params->M;
+  size_t N = params->N;
+  size_t stride0 = params->binding1_stride0;
+  size_t stride1 = params->binding1_stride1;
+  size_t size = params->size;
+
+  for (int m = 0; m < M; m++) {
+      for (int n = 0; n < N; n++) {
+          for (int i = 0; i < size ; i++) {
+              params->binding1[params->binding1_offset + m * stride0 + n * stride1 + i ] = i;
+          }
+      }
+  }
+  return 0;
+}
 // Called once for each plugin load and paired with a future call to unload.
 // We don't do anything special here as this plugin is meant to represent a
 // pure/stateless kernel library. Even in standalone mode we could allocate
@@ -114,6 +147,9 @@ static iree_hal_executable_plugin_status_t standalone_plugin_resolve(
                                           "simple_mul_workgroup") == 0) {
       params->out_fn_ptrs[i] = simple_mul_workgroup;
       params->out_fn_contexts[i] = NULL;  // no context used, could be self
+    } else if (iree_hal_executable_plugin_strcmp(symbol_name, "softmax") == 0) {
+        params->out_fn_ptrs[i] = test_softmax;
+        params->out_fn_contexts[i] = NULL;
     } else {
       if (is_optional) {
         *out_resolution |=

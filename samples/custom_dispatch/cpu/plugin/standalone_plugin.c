@@ -244,10 +244,13 @@ static int softmax_skl_ukernel(void* params_ptr, void* context,
     const float* restrict binding0;
     size_t binding0_offset;
     size_t binding0_stride0;
+    size_t binding0_stride1;
     float* restrict binding1;
     size_t binding1_offset;
     size_t binding1_stride0;
-    size_t row;
+    size_t binding1_stride1;
+    size_t M;
+    size_t N;
     size_t size;
     const uint64_t* restrict processor_data;
   } params_t;
@@ -256,18 +259,21 @@ static int softmax_skl_ukernel(void* params_ptr, void* context,
   // on a slice of the inputs to produce a slice of the output,
   // so the loop here just needs to iterate from `0` to `size`,
   // where `size` is the size of the slice to be executed by this call.
+  size_t M = params->M;
+  size_t N = params->N;
   size_t size = params->size;
-  size_t row = params->row;
+  size_t stride0 = params->binding1_stride0;
+  size_t stride1 = params->binding1_stride1;
+  size_t offset = params->binding1_offset;
 
-  for (size_t i = 0; i < row; ++i) {
-    // The operation `iree_codegen.ukernel.generic` takes a slice of
-    // the inputs and outputs as operands. So the `pointer` and `offset`
-    // passed into this function represent the starting location of
-    // where to read the data from for this invocation of the function.
-    iree_uk_softmax_tile_riscv_64_f32_1d(&params->binding0[params->binding0_offset + i * size],
-                                         &params->binding1[params->binding1_offset + i * size],
-                                         size);
+  for (int m = 0; m < M; m++) {
+    for (int n = 0; n < N; n++) {
+      iree_uk_softmax_tile_riscv_64_f32_1d(&params->binding0[offset + m * stride0 + n * stride1],
+                                           &params->binding1[offset + m * stride0 + n * stride1],
+                                           size);
+    }
   }
+
   return 0;
 }
 #endif /* ifdef __riscv */

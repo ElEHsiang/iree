@@ -20,6 +20,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Value.h"
+#include "mlir/IR/ValueRange.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 namespace mlir {
@@ -143,25 +144,19 @@ matchDAGForUKernel(RewriterBase &rewriter, linalg::SoftmaxOp op) {
   Value out = op.getDpsInitOperand(0)->get();
   auto outType = llvm::cast<ShapedType>(out.getType());
   int64_t rank = outType.getRank();
-  int64_t rows = 1;
-  int64_t size = outType.getDimSize(rank - 1);
-
-  for (int i = 0; i < rank - 1; i++) {
-    rows *= outType.getDimSize(i);
-  }
+  SmallVector<Value> otherOperands;
 
   Location loc = op.getLoc();
+  for (int i = 0; i < rank; i++) {
+    otherOperands.push_back(rewriter.create<arith::ConstantIndexOp>(loc, outType.getDimSize(i)));
+  }
 
-  Value rowsOp = rewriter.create<arith::ConstantIndexOp>(
-      loc, rows);
-  Value sizeOp = rewriter.create<arith::ConstantIndexOp>(
-      loc, size);
   auto fn = getFnNameAndDefAttrs(ukernelName, rewriter, targetAttr);
   auto genericMicroKernelOp = rewriter.create<IREE::Codegen::VendorKernelSoftmaxOp>(
       loc, outType, fn.name, ValueRange{lhs}, out,
-      ValueRange{rowsOp, sizeOp},
+      ValueRange{otherOperands},
       /*fn_def_attrs=*/rewriter.getDictionaryAttr(fn.defAttrs),
-      /*strided_outer_dims=*/rewriter.getIndexAttr(1));
+      /*strided_outer_dims=*/rewriter.getIndexAttr(2));
   return cast<IREE::Codegen::UKernelOpInterface>(
       genericMicroKernelOp.getOperation());
 }

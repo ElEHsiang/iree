@@ -212,7 +212,7 @@ static FailureOr<func::CallOp> lowerVendorKernelSoftmaxToFunctionCall(
 }
 
 MutableOperandRange VendorKernelSoftmaxOp::getDpsInitsMutable() {
-  return getOutputsMutable();
+  return getOutputMutable();
 }
 
 FailureOr<func::CallOp>

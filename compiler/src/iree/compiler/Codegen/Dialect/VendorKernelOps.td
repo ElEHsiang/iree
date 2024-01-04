@@ -24,8 +24,7 @@ class IREECodegen_VendorKernelOp<string mnemonic, list<Trait> traits = []> :
       "getTiledImplementation"]>])> {}
   
 def IREECodegen_VendorKernelSoftmaxOp :
-    IREECodegen_VendorKernelOp<"vendorkernel.softmax", [
-      AttrSizedOperandSegments]> {
+    IREECodegen_VendorKernelOp<"vendorkernel.softmax", []> {
   let summary = "Vendor softmax ukernel";
 
   let description = [{
@@ -34,29 +33,21 @@ def IREECodegen_VendorKernelSoftmaxOp :
 
   let arguments = (ins
     StrAttr:$u_kernel_fn_name,
-    Variadic<AnyType>:$inputs,
-    Variadic<AnyRankedTensorOrMemRefType>:$outputs,
+    AnyType:$input,
+    AnyRankedTensorOrMemRefType:$output,
     Variadic<AnyType>:$other_operands,
     OptionalAttr<DictionaryAttr>:$fn_def_attrs,
     OptionalAttr<IndexAttr>:$strided_outer_dims);
   let results = (outs Variadic<AnyType>:$results);
   let assemblyFormat = [{
     attr-dict $u_kernel_fn_name
-    (`ins` `(` $inputs^ `:` type($inputs) `)`)?
-    (`outs` `(` $outputs^  `:` type($outputs) `)`)?
+    `in` `(` $input `:` type($input) `)`
+    `out` `(` $output  `:` type($output) `)`
     (`(` $other_operands^ `:` type($other_operands) `)`)?
     ( `fn_def_attrs` $fn_def_attrs^ )?
     (`strided_outer_dims` `(` $strided_outer_dims^ `)`)? (`->` type($results)^)?
   }];
   let extraClassDeclaration = [{
-    Value getInput() {
-      return (*getODSOperands(0).begin());
-    }
-
-    Value getOutput() {
-      return (*getODSOperands(1).begin());
-    }
-
     ShapedType getInputOperandType() {
       return getInput().getType().cast<ShapedType>();
     }

@@ -32,7 +32,6 @@ def IREECodegen_VendorKernelSoftmaxOp :
   }];
 
   let arguments = (ins
-    StrAttr:$u_kernel_fn_name,
     AnyType:$input,
     AnyRankedTensorOrMemRefType:$output,
     Variadic<AnyType>:$other_operands,
@@ -40,7 +39,7 @@ def IREECodegen_VendorKernelSoftmaxOp :
     OptionalAttr<IndexAttr>:$strided_outer_dims);
   let results = (outs Variadic<AnyType>:$results);
   let assemblyFormat = [{
-    attr-dict $u_kernel_fn_name
+    attr-dict
     `in` `(` $input `:` type($input) `)`
     `out` `(` $output  `:` type($output) `)`
     (`(` $other_operands^ `:` type($other_operands) `)`)?
@@ -59,6 +58,9 @@ def IREECodegen_VendorKernelSoftmaxOp :
     }
     int64_t getOutputOperandRank() {
       return getOutputOperandType().getRank();
+    }
+    StringRef getVendorKernelFnName() {
+      return "softmax";
     }
   }];
 }

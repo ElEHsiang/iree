@@ -217,7 +217,7 @@ MutableOperandRange VendorKernelSoftmaxOp::getDpsInitsMutable() {
 
 FailureOr<func::CallOp>
 VendorKernelSoftmaxOp::lowerToFunctionCall(RewriterBase &rewriter) {
-  return lowerVendorKernelSoftmaxToFunctionCall(rewriter, *this, getUKernelFnName(),
+  return lowerVendorKernelSoftmaxToFunctionCall(rewriter, *this, getVendorKernelFnName(),
                                            getStridedOuterDimsAttr());
 }
 

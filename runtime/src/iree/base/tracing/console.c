@@ -90,7 +90,7 @@ typedef struct iree_trace_thread_t {
   iree_trace_zone_t stack[128];
 #endif  // IREE_TRACING_CONSOLE_TIMING
 } iree_trace_thread_t;
-static iree_thread_local iree_trace_thread_t _thread = {0};
+iree_thread_local iree_trace_thread_t _thread = {0};
 
 void iree_tracing_set_thread_name(const char* name) {
   _thread.name_length = iree_min(strlen(name), IREE_ARRAYSIZE(_thread.name));
